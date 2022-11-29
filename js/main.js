@@ -6,7 +6,7 @@
 // 6. Посветка рамки для радио и чекбоксов
 
 // Объект с сохраненными ответами
-var answers = {
+let answers = {
     2: null,
     3: null,
     4: null,
@@ -14,34 +14,42 @@ var answers = {
 };
 
 // Движение вперед
-var btnNext = document.querySelectorAll('[data-nav="next"]');
-btnNext.forEach(function(button) {
-    button.addEventListener("click", function() {
-        var thisCard = this.closest("[data-card]");
+let btnNext = document.querySelectorAll('[data-nav="next"]');
+btnNext.forEach(function (button) {
+    button.addEventListener("click", function () {
+        let thisCard = this.closest("[data-card]");
+        let thisCardNumber = parseInt(thisCard.dataset.card);
 
         if (thisCard.dataset.validate == "novalidate") {
             console.log("NOVALIDATE");
             navigate("next", thisCard);
         } else {
             console.log("VALIDATE");
-            navigate("next", thisCard);
+            // при движении вперёд, данные сохраняются в объект
+            saveAnswer(thisCardNumber, gatherCardData(thisCardNumber));
+            // валидация на заполненность
+            if (isFilled(thisCardNumber) && checkOnRequired(thisCardNumber)) {
+                navigate("next", thisCard);
+            } else {
+                alert("дайте ответ!");
+            }
         }
     });
 });
 
 // Движение назад
-var btnPrev = document.querySelectorAll('[data-nav="prev"]');
-btnPrev.forEach(function(button) {
-    button.addEventListener("click", function() {
-        var thisCard = this.closest("[data-card]");
+let btnPrev = document.querySelectorAll('[data-nav="prev"]');
+btnPrev.forEach(function (button) {
+    button.addEventListener("click", function () {
+        let thisCard = this.closest("[data-card]");
         navigate("prev", thisCard);
     });
 });
 
 // Функция для навигации вперед и назад
 function navigate(direction, thisCard) {
-    var thisCardNumber = parseInt(thisCard.dataset.card);
-    var nextCard;
+    let thisCardNumber = parseInt(thisCard.dataset.card);
+    let nextCard;
 
     if (direction == "next") {
         nextCard = thisCardNumber + 1;
@@ -68,19 +76,19 @@ function gatherCardData(number) {
     }
     */
 
-    var question;
-    var result = [];
+    let question;
+    let result = [];
 
     // Находим карточку по номеру и data-атрибуту
-    var currentCard = document.querySelector(`[data-card="${number}"]`);
+    let currentCard = document.querySelector(`[data-card="${number}"]`);
 
     // Находим главный вопрос карточки
     question = currentCard.querySelector("[data-question]").innerText;
 
     // 1. Находим все заполненные значения из радио кнопок
-    var radioValues = currentCard.querySelectorAll('[type="radio"]');
+    let radioValues = currentCard.querySelectorAll('[type="radio"]');
     // console.log("gatherCardData -> radioValues", radioValues)
-    radioValues.forEach(function(item) {
+    radioValues.forEach(function (item) {
         if (item.checked) {
             result.push({
                 name: item.name,
@@ -90,8 +98,8 @@ function gatherCardData(number) {
     });
 
     // 2. Находим все заполненные значения из чекбоксов
-    var checkBoxValues = currentCard.querySelectorAll('[type="checkbox"]');
-    checkBoxValues.forEach(function(item){
+    let checkBoxValues = currentCard.querySelectorAll('[type="checkbox"]');
+    checkBoxValues.forEach(function (item) {
         console.dir(item);
         if (item.checked) {
             result.push({
@@ -102,10 +110,11 @@ function gatherCardData(number) {
     })
 
     // 3. Находим все заполненные значения из инпутов
-    var inputValues = currentCard.querySelectorAll('[type="text"], [type="email"], [type="number"]');
-    inputValues.forEach(function(item){
+    let inputValues = currentCard.querySelectorAll('[type="text"], [type="email"], [type="number"]');
+    inputValues.forEach(function (item) {
+        // ??? нужен ли здесь let?    
         itemValue = item.value;
-        if ( itemValue.trim() != "" ) {
+        if (itemValue.trim() != "") {
             result.push({
                 name: item.name,
                 value: item.value
@@ -115,10 +124,104 @@ function gatherCardData(number) {
 
     console.log(result);
 
-    var data = {
+    let data = {
         question: question,
         answer: result
     };
 
     return data;
 }
+
+// Функция записи ответов в объект с ответами
+function saveAnswer(number, data) {
+    answers[number] = data;
+}
+
+// Функция проверки на заполненность
+function isFilled(number) {
+    if (answers[number].answer.length > 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+// Функция для проверки email
+
+function validateEmail(email) {
+    let pattern = /^[\w-\.]+@[\w-]+\.[a-z]{2,4}$/i;
+    return pattern.test(email);
+}
+// Функция проверки на заполненность обязательных полей и инпутов с email
+
+function checkOnRequired(number) {
+    let currentCard = document.querySelector(`[data-card="${number}"]`);
+    let requiredFields = currentCard.querySelectorAll("[required]");
+    console.log("checkonRequired -> requiredFields", requiredFields);
+
+    let isValidArray = [];
+
+    requiredFields.forEach(function (item) {
+        console.dir(item.type);
+        console.dir(item.value);
+        console.dir(item.checked);
+        if (item.type == "checkbox" && item.checked == false) {
+            isValidArray.push(false);
+        } else if (item.type == "email") {
+            if (validateEmail(item.value)) {
+                isValidArray.push(true);
+            } else {
+                isValidArray.push(false);
+            }
+        }
+    });
+
+    if (isValidArray.indexOf(false) == -1) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+// подсвечиваем рамку у радиокнопок
+document.querySelectorAll(".radio-group").forEach(function (item) {
+    item.addEventListener("click", function (e) {
+        // проверяем где произошел клик - внутри тега label или нет
+        let label = e.target.closest("label");
+        if (label) {
+            // отменяем активный класс у неактивных лейблов
+            label.closest(".radio-group").querySelectorAll("label").forEach(function (item) {
+                item.classList.remove("radio-block--active");
+            })
+            // добавляем активный класс к лейблу на который кликнули
+            label.classList.add("radio-block--active");
+        }
+    })
+})
+
+// подсвечиваем рамку у чекбоксов
+document.querySelectorAll('label.checkbox-block input[type="checkbox"]').forEach(function (item) {
+    item.addEventListener('change', function () {
+        //если чекбокс проставлен
+        if (item.checked) {
+            // добавляем активный класс
+            item.closest("label").classList.add("checkbox-block--active");
+        } else {
+            //убираем активный класс
+            item.closest("label").classList.remove("checkbox-block--active");
+        }
+    })
+})
+
+
+// отображение прогресс-бара
+
+// расчет количества карточек
+
+// текущая карточка
+
+// расчет % прохождения
+
+// обновляем прогресс-бар
+
